@@ -1,6 +1,6 @@
 pkgname=open-design
 pkgver=0.3.0
-pkgrel=1
+pkgrel=2
 _tag="open-design-v${pkgver}"
 pkgdesc="Open Design desktop app"
 arch=("x86_64")
@@ -35,7 +35,9 @@ build() {
   export CI=true
 
   pnpm install --frozen-lockfile
-  pnpm tools-pack linux build --to dir
+
+  # Force a predictable output path inside the build directory.
+  pnpm tools-pack linux build --to dir --dir "$srcdir/tools-pack"
 }
 
 package() {
@@ -43,26 +45,28 @@ package() {
 
   install -dm755 "$pkgdir/opt/open-design"
 
-  echo "Searching for Linux build output..."
-  find . -maxdepth 6 -type d \( -name "linux-unpacked" -o -name "*linux*" -o -name "*unpacked*" \)
+  echo "Searching for Open Design build output..."
+  find "$srcdir/tools-pack" -maxdepth 8 -type d -print || true
 
-  if [ -d "dist/linux-unpacked" ]; then
-    cp -a dist/linux-unpacked/. "$pkgdir/opt/open-design/"
-  elif [ -d "apps/desktop/dist/linux-unpacked" ]; then
-    cp -a apps/desktop/dist/linux-unpacked/. "$pkgdir/opt/open-design/"
-  elif [ -d "apps/desktop/release/linux-unpacked" ]; then
-    cp -a apps/desktop/release/linux-unpacked/. "$pkgdir/opt/open-design/"
-  else
-    echo "Could not find Linux unpacked build output."
+  build_output="$srcdir/tools-pack/out/linux/namespaces/default/builder/linux-unpacked"
+
+  if [ ! -d "$build_output" ]; then
+    echo "Expected build output not found:"
+    echo "$build_output"
+    echo
+    echo "Available builder output:"
+    find "$srcdir/tools-pack/out/linux/namespaces/default/builder" -maxdepth 3 -print || true
     exit 1
   fi
 
+  cp -a "$build_output/." "$pkgdir/opt/open-design/"
+
   install -dm755 "$pkgdir/usr/bin"
 
-  if [ -x "$pkgdir/opt/open-design/open-design" ]; then
-    ln -s /opt/open-design/open-design "$pkgdir/usr/bin/open-design"
-  elif [ -x "$pkgdir/opt/open-design/Open Design" ]; then
+  if [ -x "$pkgdir/opt/open-design/Open Design" ]; then
     ln -s "/opt/open-design/Open Design" "$pkgdir/usr/bin/open-design"
+  elif [ -x "$pkgdir/opt/open-design/open-design" ]; then
+    ln -s "/opt/open-design/open-design" "$pkgdir/usr/bin/open-design"
   else
     echo "Could not find Open Design executable."
     find "$pkgdir/opt/open-design" -maxdepth 2 -type f -executable
