@@ -1,0 +1,165 @@
+pkgname=open-design-git
+_pkgname=open-design
+pkgver=0.3.0.r0.g0000000
+pkgrel=1
+pkgdesc="Open Design desktop app built from the latest Git main branch"
+arch=("x86_64")
+url="https://github.com/nexu-io/open-design"
+license=("Apache-2.0")
+depends=(
+  "alsa-lib"
+  "at-spi2-core"
+  "cairo"
+  "gtk3"
+  "libdrm"
+  "libx11"
+  "libxcb"
+  "libxcomposite"
+  "libxdamage"
+  "libxext"
+  "libxfixes"
+  "libxkbcommon"
+  "libxrandr"
+  "mesa"
+  "nspr"
+  "nss"
+  "pango"
+)
+makedepends=(
+  "base-devel"
+  "git"
+  "nodejs"
+  "npm"
+  "pnpm"
+  "python"
+)
+provides=("open-design")
+conflicts=("open-design")
+source=(
+  "git+https://github.com/nexu-io/open-design.git#branch=main"
+)
+sha256sums=(
+  "SKIP"
+)
+
+pkgver() {
+  cd "$srcdir/$_pkgname"
+
+  local version
+  version="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.0.0")"
+
+  local rev
+  rev="$(git rev-list --count HEAD)"
+
+  local commit
+  commit="$(git rev-parse --short HEAD)"
+
+  printf "%s.r%s.g%s" "$version" "$rev" "$commit"
+}
+
+build() {
+  cd "$srcdir/$_pkgname"
+
+  export PNPM_HOME="$srcdir/pnpm-home"
+  export PATH="$PNPM_HOME:$PATH"
+  export CI=true
+  export npm_config_cache="$srcdir/npm-cache"
+  export ELECTRON_CACHE="$srcdir/electron-cache"
+  export ELECTRON_BUILDER_CACHE="$srcdir/electron-builder-cache"
+
+  pnpm install --frozen-lockfile
+
+  # Current main branch supports:
+  # tools-pack linux build --to all|appimage|dir
+  #
+  # --to dir avoids AppImage wrapping and gives us a normal unpacked Electron app
+  # that can be installed under /opt and owned by pacman.
+  pnpm tools-pack linux build --to dir --dir "$srcdir/tools-pack" --json | tee "$srcdir/tools-pack-result.json"
+
+  echo "Open Design tools-pack result:"
+  cat "$srcdir/tools-pack-result.json"
+
+  echo "Searching generated Linux output:"
+  find "$srcdir/tools-pack" -maxdepth 8 -print || true
+}
+
+package() {
+  cd "$srcdir/$_pkgname"
+
+  install -dm755 "$pkgdir/opt/open-design"
+
+  local output_root
+  output_root="$(node -e "
+const fs = require('fs');
+const p = '$srcdir/tools-pack-result.json';
+const raw = fs.readFileSync(p, 'utf8');
+const start = raw.lastIndexOf('{');
+if (start === -1) process.exit(1);
+const data = JSON.parse(raw.slice(start));
+if (!data.outputRoot) process.exit(1);
+process.stdout.write(data.outputRoot);
+" 2>/dev/null || true)"
+
+  if [ -z "$output_root" ] || [ ! -d "$output_root" ]; then
+    echo "Could not read outputRoot from tools-pack-result.json."
+    echo "Searching for outputRoot manually..."
+    find "$srcdir/tools-pack" -maxdepth 10 -type d -print || true
+    exit 1
+  fi
+
+  echo "Using outputRoot: $output_root"
+
+  local build_output
+  build_output="$(find "$output_root" -maxdepth 2 -type d -name "linux-unpacked" | head -n 1)"
+
+  if [ -z "$build_output" ]; then
+    echo "Could not find linux-unpacked directory inside outputRoot."
+    echo "Contents of outputRoot:"
+    find "$output_root" -maxdepth 4 -print || true
+    exit 1
+  fi
+
+  echo "Using build output: $build_output"
+
+  cp -a "$build_output/." "$pkgdir/opt/open-design/"
+
+  install -dm755 "$pkgdir/usr/bin"
+
+  local executable
+  executable="$(find "$pkgdir/opt/open-design" -maxdepth 2 -type f -executable \( -name "Open Design" -o -name "open-design" \) | head -n 1)"
+
+  if [ -z "$executable" ]; then
+    echo "Could not find Open Design executable."
+    echo "Executable files found:"
+    find "$pkgdir/opt/open-design" -maxdepth 3 -type f -executable -print || true
+    exit 1
+  fi
+
+  ln -s "${executable#$pkgdir}" "$pkgdir/usr/bin/open-design"
+
+  install -dm755 "$pkgdir/usr/share/applications"
+
+  cat > "$pkgdir/usr/share/applications/open-design.desktop" <<EOF
+[Desktop Entry]
+Name=Open Design
+Comment=Open Design desktop app
+Exec=/usr/bin/open-design
+Icon=open-design
+Terminal=false
+Type=Application
+Categories=Graphics;Development;
+EOF
+
+  # Try to install icon if Electron Builder produced one.
+  local icon
+  icon="$(find "$pkgdir/opt/open-design" -type f \( -name "*.png" -o -name "*.svg" \) | grep -i "icon" | head -n 1 || true)"
+
+  if [ -n "$icon" ]; then
+    install -dm755 "$pkgdir/usr/share/icons/hicolor/512x512/apps"
+    if [[ "$icon" == *.png ]]; then
+      install -Dm644 "$icon" "$pkgdir/usr/share/icons/hicolor/512x512/apps/open-design.png"
+    elif [[ "$icon" == *.svg ]]; then
+      install -Dm644 "$icon" "$pkgdir/usr/share/icons/hicolor/scalable/apps/open-design.svg"
+    fi
+  fi
+}
