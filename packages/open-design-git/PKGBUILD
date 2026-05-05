@@ -1,7 +1,7 @@
 pkgname=open-design-git
 _pkgname=open-design
 pkgver=0.3.0.r0.g0000000
-pkgrel=6
+pkgrel=7
 pkgdesc="Open Design desktop app built from the latest Git main branch"
 arch=("x86_64")
 url="https://github.com/nexu-io/open-design"
@@ -10,6 +10,7 @@ depends=(
   "alsa-lib"
   "at-spi2-core"
   "cairo"
+  "fuse2"
   "gtk3"
   "libdrm"
   "libx11"
@@ -107,10 +108,10 @@ package() {
   install -Dm755 "$appimage" "$pkgdir/opt/open-design/Open-Design.AppImage"
 
   cat > "$pkgdir/usr/bin/open-design" <<'EOF'
-#!/usr/bin/env bash
-export OD_DESKTOP_LOG_ECHO="${OD_DESKTOP_LOG_ECHO:-1}"
-exec /opt/open-design/Open-Design.AppImage --appimage-extract-and-run "$@"
-EOF
+  #!/usr/bin/env bash
+  export OD_DESKTOP_LOG_ECHO="${OD_DESKTOP_LOG_ECHO:-1}"
+  exec /opt/open-design/Open-Design.AppImage "$@"
+  EOF
   chmod 755 "$pkgdir/usr/bin/open-design"
 
   cat > "$pkgdir/usr/share/applications/open-design.desktop" <<EOF
