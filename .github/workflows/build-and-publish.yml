@@ -1,0 +1,86 @@
+name: Build and publish Arch repo
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/**"
+      - "scripts/**"
+      - ".github/workflows/build-and-publish.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Install base dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm \
+            base-devel \
+            git \
+            pacman-contrib \
+            sudo
+
+      - name: Create build user
+        run: |
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
+          chmod 440 /etc/sudoers.d/builder
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fix ownership
+        run: |
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Build repo
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          sudo -u builder REPO_NAME=personal ./scripts/build-repo.sh
+
+      - name: Add simple index page
+        run: |
+          cat > "$GITHUB_WORKSPACE/repo/index.html" <<'EOF'
+          <!doctype html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Personal Arch Repo</title>
+          </head>
+          <body>
+            <h1>Personal Arch Repo</h1>
+            <p>Repository path:</p>
+            <pre>Server = https://YOUR_GITHUB_USERNAME.github.io/arch-packages/$arch</pre>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: repo
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
