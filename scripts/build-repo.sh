@@ -8,6 +8,10 @@ OUT_DIR="$ROOT_DIR/repo/x86_64"
 
 mkdir -p "$OUT_DIR"
 
+rm -f "$OUT_DIR"/*.pkg.tar.*
+rm -f "$OUT_DIR"/*.db*
+rm -f "$OUT_DIR"/*.files*
+
 echo "Building packages from: $PKG_DIR"
 echo "Repo output: $OUT_DIR"
 

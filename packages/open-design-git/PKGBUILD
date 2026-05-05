@@ -1,9 +1,10 @@
 pkgname=open-design-git
 _pkgname=open-design
 pkgver=0.3.0.r0.g0000000
-pkgrel=7
+pkgrel=2
 pkgdesc="Open Design desktop app built from the latest Git main branch"
 arch=("x86_64")
+options=(!strip !debug)
 url="https://github.com/nexu-io/open-design"
 license=("Apache-2.0")
 depends=(
@@ -28,6 +29,7 @@ depends=(
 )
 makedepends=(
   "base-devel"
+  "file"
   "git"
   "nodejs"
   "npm"
@@ -92,26 +94,27 @@ package() {
   install -dm755 "$pkgdir/usr/share/applications"
 
   local appimage
-  appimage="$(find "$srcdir/tools-pack" -type f -name "*.AppImage" | head -n 1)"
+  appimage="$(find "$srcdir/tools-pack" -type f -name "*.AppImage" -size +10M | head -n 1)"
 
   if [ -z "$appimage" ]; then
-    echo "Could not find generated AppImage."
-    echo "tools-pack-result.json:"
-    cat "$srcdir/tools-pack-result.json" || true
+    echo "Could not find a real generated AppImage larger than 10MB."
     echo "Generated files:"
-    find "$srcdir/tools-pack" -maxdepth 10 -type f -print || true
+    find "$srcdir/tools-pack" -maxdepth 10 -type f -print -exec ls -lh {} \; || true
     exit 1
   fi
 
   echo "Using AppImage: $appimage"
+  ls -lh "$appimage"
+  file "$appimage"
 
   install -Dm755 "$appimage" "$pkgdir/opt/open-design/Open-Design.AppImage"
 
   cat > "$pkgdir/usr/bin/open-design" <<'EOF'
-  #!/usr/bin/env bash
-  export OD_DESKTOP_LOG_ECHO="${OD_DESKTOP_LOG_ECHO:-1}"
-  exec /opt/open-design/Open-Design.AppImage "$@"
-  EOF
+#!/usr/bin/env bash
+export OD_DESKTOP_LOG_ECHO="${OD_DESKTOP_LOG_ECHO:-1}"
+exec /opt/open-design/Open-Design.AppImage "$@"
+EOF
+
   chmod 755 "$pkgdir/usr/bin/open-design"
 
   cat > "$pkgdir/usr/share/applications/open-design.desktop" <<EOF
@@ -124,15 +127,4 @@ Terminal=false
 Type=Application
 Categories=Graphics;Development;
 EOF
-
-  local icon
-  icon="$(find "$srcdir/$_pkgname" -type f \( -name "*.png" -o -name "*.svg" \) | grep -Ei "icon|logo" | head -n 1 || true)"
-
-  if [ -n "$icon" ]; then
-    if [[ "$icon" == *.png ]]; then
-      install -Dm644 "$icon" "$pkgdir/usr/share/icons/hicolor/512x512/apps/open-design.png"
-    elif [[ "$icon" == *.svg ]]; then
-      install -Dm644 "$icon" "$pkgdir/usr/share/icons/hicolor/scalable/apps/open-design.svg"
-    fi
-  fi
 }
