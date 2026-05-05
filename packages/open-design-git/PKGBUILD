@@ -1,7 +1,7 @@
 pkgname=open-design-git
 _pkgname=open-design
 pkgver=0.3.0.r0.g0000000
-pkgrel=1
+pkgrel=2
 pkgdesc="Open Design desktop app built from the latest Git main branch"
 arch=("x86_64")
 url="https://github.com/nexu-io/open-design"
@@ -74,8 +74,8 @@ build() {
   #
   # --to dir avoids AppImage wrapping and gives us a normal unpacked Electron app
   # that can be installed under /opt and owned by pacman.
-  pnpm tools-pack linux build --to dir --dir "$srcdir/tools-pack" --json | tee "$srcdir/tools-pack-result.json"
-
+  pnpm tools-pack linux build --to dir --portable --dir "$srcdir/tools-pack" --json | tee "$srcdir/tools-pack-result.json"
+  
   echo "Open Design tools-pack result:"
   cat "$srcdir/tools-pack-result.json"
 
