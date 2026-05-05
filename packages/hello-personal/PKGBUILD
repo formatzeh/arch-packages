@@ -1,0 +1,15 @@
+pkgname=hello-personal
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Tiny test package for my personal Arch repo"
+arch=("any")
+url="https://github.com/YOUR_GITHUB_USERNAME/arch-packages"
+license=("MIT")
+depends=("bash")
+
+package() {
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/hello-personal" <<'EOF'
+#!/usr/bin/env bash
+echo "Hello from my personal Arch repo."
+EOF
+}
