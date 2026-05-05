@@ -1,7 +1,7 @@
 pkgname=open-design-git
 _pkgname=open-design
 pkgver=0.3.0.r0.g0000000
-pkgrel=2
+pkgrel=3
 pkgdesc="Open Design desktop app built from the latest Git main branch"
 arch=("x86_64")
 options=(!strip !debug)
@@ -29,7 +29,6 @@ depends=(
 )
 makedepends=(
   "base-devel"
-  "file"
   "git"
   "nodejs"
   "npm"
@@ -105,7 +104,6 @@ package() {
 
   echo "Using AppImage: $appimage"
   ls -lh "$appimage"
-  file "$appimage"
 
   install -Dm755 "$appimage" "$pkgdir/opt/open-design/Open-Design.AppImage"
 
