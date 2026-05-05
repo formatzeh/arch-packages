@@ -125,17 +125,18 @@ process.stdout.write(data.outputRoot);
 
   install -dm755 "$pkgdir/usr/bin"
 
-  local executable
-  executable="$(find "$pkgdir/opt/open-design" -maxdepth 2 -type f -executable \( -name "Open Design" -o -name "open-design" \) | head -n 1)"
-
-  if [ -z "$executable" ]; then
+  if [ -x "$pkgdir/opt/open-design/Open Design" ]; then
+    mv "$pkgdir/opt/open-design/Open Design" "$pkgdir/opt/open-design/open-design-bin"
+  elif [ -x "$pkgdir/opt/open-design/open-design" ]; then
+    mv "$pkgdir/opt/open-design/open-design" "$pkgdir/opt/open-design/open-design-bin"
+  else
     echo "Could not find Open Design executable."
     echo "Executable files found:"
     find "$pkgdir/opt/open-design" -maxdepth 3 -type f -executable -print || true
     exit 1
   fi
 
-  ln -s "${executable#$pkgdir}" "$pkgdir/usr/bin/open-design"
+  ln -s /opt/open-design/open-design-bin "$pkgdir/usr/bin/open-design"
 
   install -dm755 "$pkgdir/usr/share/applications"
 
