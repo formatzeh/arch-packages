@@ -65,7 +65,7 @@ jobs:
           <body>
             <h1>Personal Arch Repo</h1>
             <p>Repository path:</p>
-            <pre>Server = https://YOUR_GITHUB_USERNAME.github.io/arch-packages/$arch</pre>
+            <pre>Server = https://formatzeh.github.io/arch-packages/$arch</pre>
           </body>
           </html>
           EOF
