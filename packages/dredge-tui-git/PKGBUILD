@@ -57,6 +57,15 @@ build() {
 
 check() {
   cd "$srcdir/$_pkgname"
+
+  # internal/crypto tests call CacheKey() which uses $XDG_RUNTIME_DIR if set,
+  # otherwise falls back to /run/user/$UID. In the CI container (no systemd-logind)
+  # the fallback path doesn't exist and the tests fail with permission errors.
+  # Provide a writable temp runtime dir so the tests exercise the real code path.
+  export XDG_RUNTIME_DIR="$srcdir/runtime"
+  mkdir -p "$XDG_RUNTIME_DIR"
+  chmod 700 "$XDG_RUNTIME_DIR"
+
   go test -short ./...
 }
 
