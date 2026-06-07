@@ -22,7 +22,9 @@ optdepends=(
 provides=("dredge")
 conflicts=("dredge")
 source=(
-  "git+https://github.com/formatzeh/dredge_tui.git#branch=main"
+  # The leading "<name>::" forces the extracted dir to be src/dredge/,
+  # which matches $_pkgname. Without it, the dir would be src/dredge_tui/.
+  "$_pkgname::git+https://github.com/formatzeh/dredge_tui.git#branch=main"
 )
 sha256sums=(
   "SKIP"
