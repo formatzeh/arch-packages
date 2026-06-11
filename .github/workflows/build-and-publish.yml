@@ -48,10 +48,35 @@ jobs:
         run: |
           chown -R builder:builder "$GITHUB_WORKSPACE"
 
+      - name: Restore package cache
+        uses: actions/cache@v4
+        with:
+          path: repo/x86_64
+          key: pkgs-${{ github.sha }}
+          restore-keys: |
+            pkgs-
+
+      - name: Fix cache ownership
+        run: |
+          mkdir -p repo/x86_64
+          chown -R builder:builder repo/x86_64
+
+      - name: Detect changed packages
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+             || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "CHANGED_PKGS=" >> "$GITHUB_ENV"
+          else
+            PKGS=$(git diff --name-only "$BEFORE" "${{ github.sha }}" \
+                     | grep '^packages/' | cut -d/ -f2 | sort -u | tr '\n' ' ')
+            echo "CHANGED_PKGS=$PKGS" >> "$GITHUB_ENV"
+          fi
+
       - name: Build repo
         run: |
           cd "$GITHUB_WORKSPACE"
-          sudo -u builder REPO_NAME=personal ./scripts/build-repo.sh
+          sudo -u builder REPO_NAME=personal ./scripts/build-repo.sh $CHANGED_PKGS
 
       - name: Add simple index page
         run: |
