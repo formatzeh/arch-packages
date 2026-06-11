@@ -1,0 +1,61 @@
+pkgname=tskr-git
+_pkgname=tskr
+pkgver=r0.g0000000
+pkgrel=1
+pkgdesc="Fast terminal task manager: projects, tasks, subtasks, dependencies, notes, and time logging"
+arch=("x86_64")
+options=(!strip !debug)
+url="https://github.com/formatzeh/tskr"
+license=("custom")
+depends=(
+  "glibc"
+)
+makedepends=(
+  "base-devel"
+  "git"
+  "go"
+)
+provides=("tskr")
+conflicts=("tskr")
+source=(
+  "$_pkgname::git+https://github.com/formatzeh/tskr.git#branch=main"
+)
+sha256sums=(
+  "SKIP"
+)
+
+pkgver() {
+  cd "$srcdir/$_pkgname"
+
+  local rev
+  rev="$(git rev-list --count HEAD)"
+
+  local commit
+  commit="$(git rev-parse --short HEAD)"
+
+  printf "r%s.g%s" "$rev" "$commit"
+}
+
+build() {
+  cd "$srcdir/$_pkgname"
+
+  export CGO_CPPFLAGS="${CPPFLAGS}"
+  export CGO_CFLAGS="${CFLAGS}"
+  export CGO_CXXFLAGS="${CXXFLAGS}"
+  export CGO_LDFLAGS="${LDFLAGS}"
+  export GOFLAGS="-buildmode=pie -trimpath -ldflags=-linkmode=external -ldflags=-s -ldflags=-w -mod=readonly -modcacherw"
+
+  go build -o "$_pkgname" ./cmd/"$_pkgname"
+}
+
+check() {
+  cd "$srcdir/$_pkgname"
+
+  go test -short ./...
+}
+
+package() {
+  cd "$srcdir/$_pkgname"
+
+  install -Dm755 "$_pkgname" "$pkgdir/usr/bin/$_pkgname"
+}
