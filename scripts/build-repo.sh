@@ -5,12 +5,9 @@ REPO_NAME="${REPO_NAME:-personal}"
 ROOT_DIR="$(pwd)"
 PKG_DIR="$ROOT_DIR/packages"
 OUT_DIR="$ROOT_DIR/repo/x86_64"
+BUILD_TARGETS=("$@")
 
 mkdir -p "$OUT_DIR"
-
-rm -f "$OUT_DIR"/*.pkg.tar.*
-rm -f "$OUT_DIR"/*.db*
-rm -f "$OUT_DIR"/*.files*
 
 echo "Building packages from: $PKG_DIR"
 echo "Repo output: $OUT_DIR"
@@ -20,6 +17,13 @@ for package_dir in "$PKG_DIR"/*; do
   [ -f "$package_dir/PKGBUILD" ] || continue
 
   package_name="$(basename "$package_dir")"
+
+  if [[ ${#BUILD_TARGETS[@]} -gt 0 ]] && \
+     ! printf '%s\n' "${BUILD_TARGETS[@]}" | grep -qx "$package_name"; then
+    echo "==> Skipping $package_name (unchanged)"
+    continue
+  fi
+
   echo "==> Building $package_name"
 
   cd "$package_dir"
@@ -29,6 +33,9 @@ for package_dir in "$PKG_DIR"/*; do
 
   makepkg --noconfirm --syncdeps --cleanbuild --clean
 
+  # Remove previous version of this package from the output dir before
+  # copying the new one, so stale versions don't end up in the database.
+  rm -f "$OUT_DIR"/"$package_name"-*.pkg.tar.zst
   cp ./*.pkg.tar.zst "$OUT_DIR/"
 
   cd "$ROOT_DIR"
