@@ -1,0 +1,61 @@
+pkgname=keyb-git
+_pkgname=keyb
+_upstream_branch=master
+_commit=27d84092f93c44bf406351cddc897ea3a9a42931
+pkgver=0.8.0.r4.g27d8409
+pkgrel=1
+pkgdesc="Create and view custom hotkey cheatsheets in the terminal"
+arch=("x86_64")
+options=(!strip !debug)
+url="https://github.com/formatzeh/keyb"
+license=("MIT")
+depends=(
+  "glibc"
+)
+makedepends=(
+  "base-devel"
+  "git"
+  "go"
+)
+provides=("keyb")
+conflicts=("keyb")
+source=(
+  "$_pkgname::git+https://github.com/formatzeh/keyb.git#commit=$_commit"
+)
+sha256sums=(
+  "SKIP"
+)
+
+pkgver() {
+  cd "$srcdir/$_pkgname"
+
+  git describe --long --tags --always \
+    | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  cd "$srcdir/$_pkgname"
+
+  export CGO_CPPFLAGS="${CPPFLAGS}"
+  export CGO_CFLAGS="${CFLAGS}"
+  export CGO_CXXFLAGS="${CXXFLAGS}"
+  export CGO_LDFLAGS="${LDFLAGS}"
+  export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
+
+  go build \
+    -ldflags "-linkmode=external -s -w -X main.version=$pkgver" \
+    -o "$_pkgname" .
+}
+
+check() {
+  cd "$srcdir/$_pkgname"
+
+  go test -short ./...
+}
+
+package() {
+  cd "$srcdir/$_pkgname"
+
+  install -Dm755 "$_pkgname" "$pkgdir/usr/bin/$_pkgname"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
