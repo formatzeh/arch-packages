@@ -49,6 +49,50 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Detect changed packages
+        env:
+          REQUESTED_PACKAGES: ${{ inputs.packages }}
+        run: |
+          set -eu
+
+          BEFORE="${{ github.event.before }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PKGS="$REQUESTED_PACKAGES"
+            if [ -z "$PKGS" ]; then
+              BUILD_TARGETS="--all"
+            else
+              BUILD_TARGETS="$PKGS"
+            fi
+          elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            PKGS=$(git ls-files 'packages/*/PKGBUILD' \
+              | cut -d/ -f2 | sort -u | tr '\n' ' ')
+            BUILD_TARGETS="$PKGS"
+          else
+            CHANGED_FILES=$(git diff --diff-filter=AM --name-only \
+              "$BEFORE" "${{ github.sha }}" -- 'packages/*/PKGBUILD')
+            PKGS=$(printf '%s\n' "$CHANGED_FILES" \
+              | cut -d/ -f2 | sort -u | tr '\n' ' ')
+            BUILD_TARGETS="$PKGS"
+          fi
+
+          if [ -z "$BUILD_TARGETS" ]; then
+            echo "No added or modified PKGBUILDs were detected." >&2
+            exit 1
+          fi
+
+          for pkg in $PKGS; do
+            case "$pkg" in
+              *[!A-Za-z0-9@._+-]*|'')
+                echo "Invalid package directory name: $pkg" >&2
+                exit 1
+                ;;
+            esac
+            test -f "packages/$pkg/PKGBUILD"
+          done
+
+          echo "Build targets: $BUILD_TARGETS"
+          echo "BUILD_TARGETS=$BUILD_TARGETS" >> "$GITHUB_ENV"
+
       - name: Fix ownership
         run: |
           chown -R builder:builder "$GITHUB_WORKSPACE"
@@ -66,38 +110,10 @@ jobs:
           mkdir -p repo/x86_64
           chown -R builder:builder repo/x86_64
 
-      - name: Detect changed packages
-        env:
-          REQUESTED_PACKAGES: ${{ inputs.packages }}
-        run: |
-          BEFORE="${{ github.event.before }}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            PKGS="$REQUESTED_PACKAGES"
-          elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            PKGS=$(git ls-files 'packages/*/PKGBUILD' \
-              | cut -d/ -f2 | sort -u | tr '\n' ' ')
-          else
-            PKGS=$(git diff --diff-filter=AM --name-only "$BEFORE" "${{ github.sha }}" \
-              -- 'packages/*/PKGBUILD' \
-              | cut -d/ -f2 | sort -u | tr '\n' ' ')
-          fi
-
-          for pkg in $PKGS; do
-            case "$pkg" in
-              *[!A-Za-z0-9@._+-]*|'')
-                echo "Invalid package directory name: $pkg" >&2
-                exit 1
-                ;;
-            esac
-            test -f "packages/$pkg/PKGBUILD"
-          done
-
-          echo "CHANGED_PKGS=$PKGS" >> "$GITHUB_ENV"
-
       - name: Build repo
         run: |
           cd "$GITHUB_WORKSPACE"
-          sudo -u builder REPO_NAME=personal ./scripts/build-repo.sh $CHANGED_PKGS
+          sudo -u builder REPO_NAME=personal ./scripts/build-repo.sh $BUILD_TARGETS
 
       - name: Add simple index page
         run: |

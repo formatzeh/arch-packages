@@ -5,7 +5,19 @@ REPO_NAME="${REPO_NAME:-personal}"
 ROOT_DIR="$(pwd)"
 PKG_DIR="$ROOT_DIR/packages"
 OUT_DIR="$ROOT_DIR/repo/x86_64"
+BUILD_ALL=false
+
+if [[ ${1:-} == "--all" ]]; then
+  BUILD_ALL=true
+  shift
+fi
+
 BUILD_TARGETS=("$@")
+
+if [[ "$BUILD_ALL" == false && ${#BUILD_TARGETS[@]} -eq 0 ]]; then
+  echo "No package build targets supplied. Use --all to build every package." >&2
+  exit 1
+fi
 
 mkdir -p "$OUT_DIR"
 
@@ -18,7 +30,7 @@ for package_dir in "$PKG_DIR"/*; do
 
   package_name="$(basename "$package_dir")"
 
-  if [[ ${#BUILD_TARGETS[@]} -gt 0 ]] && \
+  if [[ "$BUILD_ALL" == false ]] && \
      ! printf '%s\n' "${BUILD_TARGETS[@]}" | grep -qx "$package_name"; then
     echo "==> Skipping $package_name (unchanged)"
     continue
