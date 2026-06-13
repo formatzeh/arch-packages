@@ -2,13 +2,16 @@ name: Build and publish Arch repo
 
 on:
   workflow_dispatch:
+    inputs:
+      packages:
+        description: "Space-separated package directory names; leave empty to build all packages"
+        required: false
+        type: string
   push:
     branches:
       - main
     paths:
-      - "packages/**"
-      - "scripts/**"
-      - ".github/workflows/build-and-publish.yml"
+      - "packages/*/PKGBUILD"
 
 permissions:
   contents: read
@@ -43,6 +46,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Fix ownership
         run: |
@@ -62,16 +67,32 @@ jobs:
           chown -R builder:builder repo/x86_64
 
       - name: Detect changed packages
+        env:
+          REQUESTED_PACKAGES: ${{ inputs.packages }}
         run: |
           BEFORE="${{ github.event.before }}"
-          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
-             || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "CHANGED_PKGS=" >> "$GITHUB_ENV"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PKGS="$REQUESTED_PACKAGES"
+          elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            PKGS=$(git ls-files 'packages/*/PKGBUILD' \
+              | cut -d/ -f2 | sort -u | tr '\n' ' ')
           else
-            PKGS=$(git diff --name-only "$BEFORE" "${{ github.sha }}" \
-                     | grep '^packages/' | cut -d/ -f2 | sort -u | tr '\n' ' ')
-            echo "CHANGED_PKGS=$PKGS" >> "$GITHUB_ENV"
+            PKGS=$(git diff --diff-filter=AM --name-only "$BEFORE" "${{ github.sha }}" \
+              -- 'packages/*/PKGBUILD' \
+              | cut -d/ -f2 | sort -u | tr '\n' ' ')
           fi
+
+          for pkg in $PKGS; do
+            case "$pkg" in
+              *[!A-Za-z0-9@._+-]*|'')
+                echo "Invalid package directory name: $pkg" >&2
+                exit 1
+                ;;
+            esac
+            test -f "packages/$pkg/PKGBUILD"
+          done
+
+          echo "CHANGED_PKGS=$PKGS" >> "$GITHUB_ENV"
 
       - name: Build repo
         run: |

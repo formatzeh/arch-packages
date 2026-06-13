@@ -1,5 +1,7 @@
 pkgname=dredge-tui-git
 _pkgname=dredge
+_upstream_branch=main
+_commit=96e132921c245308a83e88a17131b063993fad47
 pkgver=0.1.0.r0.g0000000
 pkgrel=1
 pkgdesc="Terminal-first encrypted vault: search notes, configs, keys, and secrets in milliseconds"
@@ -24,7 +26,7 @@ conflicts=("dredge")
 source=(
   # The leading "<name>::" forces the extracted dir to be src/dredge/,
   # which matches $_pkgname. Without it, the dir would be src/dredge_tui/.
-  "$_pkgname::git+https://github.com/formatzeh/dredge_tui.git#branch=main"
+  "$_pkgname::git+https://github.com/formatzeh/dredge_tui.git#commit=$_commit"
 )
 sha256sums=(
   "SKIP"

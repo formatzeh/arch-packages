@@ -1,5 +1,7 @@
 pkgname=tskr-git
 _pkgname=tskr
+_upstream_branch=main
+_commit=506b677fe0959bb1c3d464e84a74ab7c9f00e9dc
 pkgver=r0.g0000000
 pkgrel=1
 pkgdesc="Fast terminal task manager: projects, tasks, subtasks, dependencies, notes, and time logging"
@@ -18,7 +20,7 @@ makedepends=(
 provides=("tskr")
 conflicts=("tskr")
 source=(
-  "$_pkgname::git+https://github.com/formatzeh/tskr.git#branch=main"
+  "$_pkgname::git+https://github.com/formatzeh/tskr.git#commit=$_commit"
 )
 sha256sums=(
   "SKIP"

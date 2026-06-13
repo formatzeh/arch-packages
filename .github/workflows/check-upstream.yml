@@ -2,11 +2,16 @@ name: Check upstream for updates
 
 on:
   schedule:
-    - cron: '0 * * * *'  # hourly; change to e.g. '*/15 * * * *' for every 15 min
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
+
+concurrency:
+  group: check-upstream
+  cancel-in-progress: false
 
 jobs:
   check:
@@ -15,18 +20,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check upstream commits
+        id: upstream
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/check-upstream.sh
 
       - name: Commit and push if changed
+        if: steps.upstream.outputs.packages != ''
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add packages/*/.upstream
-          git diff --cached --quiet && echo "No upstream changes." && exit 0
-          git commit -m "chore: bump upstream commit tracking"
+          git add packages/*/PKGBUILD
+          git commit -m "chore: update upstream commits"
           git push
+
+      # Pushes made with GITHUB_TOKEN do not trigger push workflows, so dispatch
+      # the build explicitly after the updated PKGBUILDs are on main.
+      - name: Build changed packages
+        if: steps.upstream.outputs.packages != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGES: ${{ steps.upstream.outputs.packages }}
+        run: gh workflow run build-and-publish.yml --ref main -f packages="$PACKAGES"
