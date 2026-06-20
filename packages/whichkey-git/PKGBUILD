@@ -1,0 +1,78 @@
+pkgname=whichkey-git
+_pkgname=whichkey
+_upstream_branch=main
+_commit=d5c32a80ec5959ef2fee3b5fe58c8a5d4ed19e3a
+pkgver=0.1.0.r15.gd5c32a8
+pkgrel=1
+pkgdesc="Standalone which-key.nvim-style launcher for the Linux desktop"
+arch=("x86_64")
+options=(!strip !debug)
+url="https://github.com/formatzeh/whichkey"
+license=("LicenseRef-unknown")
+depends=(
+  "gcc-libs"
+  "glibc"
+)
+makedepends=(
+  "cargo"
+  "git"
+)
+optdepends=(
+  "kitty: default terminal used when launching whichkey outside a TTY"
+)
+provides=("whichkey")
+conflicts=("whichkey")
+source=(
+  "$_pkgname::git+https://github.com/formatzeh/whichkey.git#commit=$_commit"
+)
+sha256sums=(
+  "SKIP"
+)
+
+pkgver() {
+  cd "$srcdir/$_pkgname"
+
+  local version
+  version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+
+  local rev
+  rev="$(git rev-list --count HEAD)"
+
+  local commit
+  commit="$(git rev-parse --short HEAD)"
+
+  printf "%s.r%s.g%s" "$version" "$rev" "$commit"
+}
+
+prepare() {
+  cd "$srcdir/$_pkgname"
+
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$CARCH-unknown-linux-gnu"
+}
+
+build() {
+  cd "$srcdir/$_pkgname"
+
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+
+  cargo build --frozen --release
+}
+
+check() {
+  cd "$srcdir/$_pkgname"
+
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+
+  cargo test --frozen
+}
+
+package() {
+  cd "$srcdir/$_pkgname"
+
+  install -Dm755 "target/release/$_pkgname" "$pkgdir/usr/bin/$_pkgname"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 config.example.yaml "$pkgdir/usr/share/doc/$pkgname/config.example.yaml"
+}
