@@ -54,6 +54,7 @@ jobs:
           REQUESTED_PACKAGES: ${{ inputs.packages }}
         run: |
           set -eu
+          cd "$GITHUB_WORKSPACE"
 
           BEFORE="${{ github.event.before }}"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
