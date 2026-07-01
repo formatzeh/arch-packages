@@ -1,7 +1,7 @@
 pkgname=tskr-git
 _pkgname=tskr
 _upstream_branch=main
-_commit=de1e92bfd519a9ed52c4d150bb6b91155110a204
+_commit=cbe3eda8c9f2a67a8f830454cb0e2e6cc49ce1f4
 pkgver=r0.g0000000
 pkgrel=1
 pkgdesc="Fast terminal task manager: projects, tasks, subtasks, dependencies, notes, and time logging"
